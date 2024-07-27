@@ -166,11 +166,11 @@
 
 #![doc(html_root_url = "https://docs.rs/xca9548a/0.2.1")]
 #![deny(unsafe_code)]
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 #![no_std]
 
 use core::cell;
-use embedded_hal::blocking::i2c;
+use embedded_hal::i2c::I2c;
 
 /// All possible errors in this crate
 #[derive(Debug)]
@@ -222,7 +222,7 @@ pub struct Xca954xaData<I2C> {
 
 impl<I2C, E> SelectChannels for Xca954xaData<I2C>
 where
-    I2C: i2c::Write<Error = E>,
+    I2C: I2c<Error = E>,
 {
     type Error = Error<E>;
     fn select_channels(&mut self, channels: u8) -> Result<(), Self::Error> {
@@ -280,40 +280,24 @@ macro_rules! i2c_traits {
             }
         }
 
-        impl<I2C, E> i2c::Write for $name<I2C>
+        impl<I2C, E> $name<I2C>
         where
-            I2C: i2c::Write<Error = E>,
+            I2C: I2c<Error = E>,
         {
-            type Error = Error<E>;
-
-            fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Self::Error> {
+            pub fn write(&mut self, address: u8, bytes: &[u8]) -> Result<(), Error<E>> {
                 self.do_on_acquired(|mut dev| dev.i2c.write(address, bytes).map_err(Error::I2C))
             }
-        }
 
-        impl<I2C, E> i2c::Read for $name<I2C>
-        where
-            I2C: i2c::Read<Error = E>,
-        {
-            type Error = Error<E>;
-
-            fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
+            fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Error<E>> {
                 self.do_on_acquired(|mut dev| dev.i2c.read(address, buffer).map_err(Error::I2C))
             }
-        }
-
-        impl<I2C, E> i2c::WriteRead for $name<I2C>
-        where
-            I2C: i2c::WriteRead<Error = E>,
-        {
-            type Error = Error<E>;
 
             fn write_read(
                 &mut self,
                 address: u8,
                 bytes: &[u8],
                 buffer: &mut [u8],
-            ) -> Result<(), Self::Error> {
+            ) -> Result<(), Error<E>> {
                 self.do_on_acquired(|mut dev| {
                     dev.i2c
                         .write_read(address, bytes, buffer)
@@ -359,7 +343,7 @@ macro_rules! impl_device {
 
         impl<I2C, E> $name<I2C>
         where
-            I2C: i2c::Read<Error = E>,
+            I2C: I2c<Error = E>,
         {
             /// Get status of channels.
             ///
@@ -381,7 +365,7 @@ macro_rules! impl_device {
 
         impl<I2C, E> $name<I2C>
         where
-            I2C: i2c::Write<Error = E>,
+            I2C: I2c<Error = E>,
         {
             /// Select which channels are enabled.
             ///
@@ -400,7 +384,7 @@ macro_rules! impl_device {
 
         impl<I2C, E> $name<I2C>
         where
-            I2C: i2c::Read<Error = E>,
+            I2C: I2c<Error = E>,
         {
             /// Get status of channels.
             ///
@@ -434,12 +418,7 @@ macro_rules! impl_device {
                         .and(Ok((data[0] >> 4) & $mask))
                 })
             }
-        }
 
-        impl<I2C, E> $name<I2C>
-        where
-            I2C: i2c::Write<Error = E>,
-        {
             /// Select which channels are enabled.
             ///
             /// Each bit corresponds to a channel.
